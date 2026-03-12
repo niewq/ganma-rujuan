@@ -1,0 +1,31 @@
+{
+  "name": "赶马入圈",
+  "appId": "",
+  "versionName": "1.0.0",
+  "versionCode": "1",
+  "description": "把马赶进圈里就能赢！",
+  "resolution": "750*1334",
+  "orientation": "portrait",
+  "compileType": "game",
+  "networkTimeout": {
+    "request": 60000,
+    "connectSocket": 60000,
+    "uploadFile": 60000,
+    "downloadFile": 60000
+  },
+  "optimization": {
+    "subpackages": []
+  },
+  "libVersion": "1.26.0",
+  "rules": [],
+  "setting": {
+    "urlCheck": false,
+    "es6": true,
+    "enhance": true,
+    "postcss": true,
+    "minified": true,
+    "checkInvalidKey": true
+  },
+  "debugInfo": true,
+  "nodeEnv": "development"
+}
