@@ -13,7 +13,8 @@ var horses = [];
 var timeLeft = 120;
 var timerInterval = null;
 var isMoving = false;
-var canvas, ctx;
+var canvas = null;
+var ctx = null;
 
 // 马的朝向
 var DIRECTIONS = {
@@ -51,7 +52,7 @@ function initGame() {
             gridX = centerX - 1 + Math.floor(Math.random() * 3);
             gridY = centerY - 1 + Math.floor(Math.random() * 3);
             attempts++;
-        } while (isCellOccupied(gridX, gridY) && attempts < 20);
+        } while (attempts < 20 && isCellOccupied(gridX, gridY));
 
         if (!isCellOccupied(gridX, gridY)) {
             horses.push({ gridX: gridX, gridY: gridY, direction: direction });
@@ -72,11 +73,15 @@ function getTimeLimit() {
 }
 
 function startTimer() {
-    if (timerInterval) clearInterval(timerInterval);
+    if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+    }
     timerInterval = setInterval(function() {
-        timeLeft--;
+        timeLeft = timeLeft - 1;
         if (timeLeft <= 0) {
             clearInterval(timerInterval);
+            timerInterval = null;
             showFail();
         }
         render();
@@ -127,10 +132,10 @@ function render() {
         ctx.fill();
 
         // 马头方向指示
-        var dir = DIRECTIONS[horse.direction];
+        var dirObj = DIRECTIONS[horse.direction];
         ctx.fillStyle = '#FFD700';
         ctx.beginPath();
-        ctx.arc(x + dir.dx * 15, y + dir.dy * 15, 8, 0, Math.PI * 2);
+        ctx.arc(x + dirObj.dx * 15, y + dirObj.dy * 15, 8, 0, Math.PI * 2);
         ctx.fill();
     }
 
@@ -144,10 +149,13 @@ function render() {
 function handleTouch(e) {
     if (isMoving || !canvas) return;
     
-    e.preventDefault();
+    if (e.cancelable) {
+        e.preventDefault();
+    }
     
     var rect = canvas.getBoundingClientRect();
-    var clientX, clientY;
+    var clientX = 0;
+    var clientY = 0;
     
     if (e.touches && e.touches.length > 0) {
         clientX = e.touches[0].clientX;
@@ -155,7 +163,7 @@ function handleTouch(e) {
     } else if (e.changedTouches && e.changedTouches.length > 0) {
         clientX = e.changedTouches[0].clientX;
         clientY = e.changedTouches[0].clientY;
-    } else {
+    } else if (e.clientX) {
         clientX = e.clientX;
         clientY = e.clientY;
     }
@@ -183,12 +191,12 @@ function handleTouch(e) {
 
 function moveHorse(horse) {
     isMoving = true;
-    var dir = DIRECTIONS[horse.direction];
+    var dirObj = DIRECTIONS[horse.direction];
     var stepTime = 150;
 
     function step() {
-        var nextX = horse.gridX + dir.dx;
-        var nextY = horse.gridY + dir.dy;
+        var nextX = horse.gridX + dirObj.dx;
+        var nextY = horse.gridY + dirObj.dy;
 
         // 检查碰撞
         var collision = false;
@@ -222,7 +230,10 @@ function moveHorse(horse) {
             isMoving = false;
 
             if (horses.length === 0) {
-                clearInterval(timerInterval);
+                if (timerInterval) {
+                    clearInterval(timerInterval);
+                    timerInterval = null;
+                }
                 showVictory();
             }
         } else {
@@ -236,22 +247,43 @@ function moveHorse(horse) {
 function showVictory() {
     var victoryLevel = document.getElementById('victoryLevel');
     if (victoryLevel) {
-        victoryLevel.textContent = level;
+        victoryLevel.innerText = level.toString();
     }
     var overlay = document.getElementById('victoryOverlay');
     if (overlay) {
-        overlay.classList.add('show');
+        overlay.style.display = 'flex';
+        overlay.style.opacity = '1';
+        overlay.style.pointerEvents = 'auto';
     }
 }
 
 function showFail() {
     var failLevel = document.getElementById('failLevel');
     if (failLevel) {
-        failLevel.textContent = level;
+        failLevel.innerText = level.toString();
     }
     var overlay = document.getElementById('failOverlay');
     if (overlay) {
-        overlay.classList.add('show');
+        overlay.style.display = 'flex';
+        overlay.style.opacity = '1';
+        overlay.style.pointerEvents = 'auto';
+    }
+}
+
+// 隐藏弹窗
+function hideVictoryOverlay() {
+    var overlay = document.getElementById('victoryOverlay');
+    if (overlay) {
+        overlay.style.opacity = '0';
+        overlay.style.pointerEvents = 'none';
+    }
+}
+
+function hideFailOverlay() {
+    var overlay = document.getElementById('failOverlay');
+    if (overlay) {
+        overlay.style.opacity = '0';
+        overlay.style.pointerEvents = 'none';
     }
 }
 
@@ -260,9 +292,11 @@ function bindButtons() {
     var restartBtn = document.getElementById('restartBtn');
     if (restartBtn) {
         restartBtn.onclick = function() {
-            var failOverlay = document.getElementById('failOverlay');
-            if (failOverlay) {
-                failOverlay.classList.remove('show');
+            hideFailOverlay();
+            level = 1;
+            var levelSpan = document.getElementById('level');
+            if (levelSpan) {
+                levelSpan.innerText = '1';
             }
             initGame();
         };
@@ -271,10 +305,10 @@ function bindButtons() {
     var nextBtn = document.getElementById('nextBtn');
     if (nextBtn) {
         nextBtn.onclick = function() {
-            level++;
+            level = level + 1;
             var levelSpan = document.getElementById('level');
             if (levelSpan) {
-                levelSpan.textContent = level;
+                levelSpan.innerText = level.toString();
             }
             initGame();
         };
@@ -283,15 +317,12 @@ function bindButtons() {
     var nextLevelBtn = document.getElementById('nextLevelBtn');
     if (nextLevelBtn) {
         nextLevelBtn.onclick = function() {
-            level++;
+            level = level + 1;
             var levelSpan = document.getElementById('level');
             if (levelSpan) {
-                levelSpan.textContent = level;
+                levelSpan.innerText = level.toString();
             }
-            var victoryOverlay = document.getElementById('victoryOverlay');
-            if (victoryOverlay) {
-                victoryOverlay.classList.remove('show');
-            }
+            hideVictoryOverlay();
             initGame();
         };
     }
@@ -299,10 +330,7 @@ function bindButtons() {
     var retryBtn = document.getElementById('retryBtn');
     if (retryBtn) {
         retryBtn.onclick = function() {
-            var failOverlay = document.getElementById('failOverlay');
-            if (failOverlay) {
-                failOverlay.classList.remove('show');
-            }
+            hideFailOverlay();
             initGame();
         };
     }
@@ -325,7 +353,6 @@ function main() {
     // 获取canvas
     var gameCanvas = document.getElementById('gameCanvas');
     if (!gameCanvas) {
-        // DOM未准备好，等待一下
         setTimeout(main, 100);
         return;
     }
@@ -348,8 +375,10 @@ function main() {
 }
 
 // 等待DOM加载完成
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', main);
-} else {
-    main();
+if (typeof document !== 'undefined') {
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', main);
+    } else {
+        main();
+    }
 }
