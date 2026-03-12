@@ -1,9 +1,9 @@
 // 赶马入圈 - 抖音小游戏
-// 游戏配置
+// 游戏配置 - 竖屏
 var COLS = 10;
 var ROWS = 14;
-var GAME_WIDTH = 500;
-var GAME_HEIGHT = 667;
+var GAME_WIDTH = 375;  // 竖屏宽度
+var GAME_HEIGHT = 667; // 竖屏高度
 var CELL_WIDTH = GAME_WIDTH / COLS;
 var CELL_HEIGHT = GAME_HEIGHT / ROWS;
 
@@ -15,6 +15,9 @@ var timerInterval = null;
 var isMoving = false;
 var canvas = null;
 var ctx = null;
+var horseImages = {};
+var imagesLoaded = 0;
+var totalImages = 4;
 
 // 马的朝向
 var DIRECTIONS = {
@@ -34,6 +37,36 @@ function isCellOccupied(gridX, gridY) {
         }
     }
     return false;
+}
+
+// 加载马图片
+function loadHorseImages() {
+    var directions = ['left-top', 'right-top', 'left-bottom', 'right-bottom'];
+    var i;
+    
+    for (i = 0; i < directions.length; i++) {
+        var dir = directions[i];
+        var img = tt.createImage();
+        img.onload = function() {
+            imagesLoaded = imagesLoaded + 1;
+            if (imagesLoaded >= totalImages) {
+                initGame();
+            }
+        };
+        img.onerror = function() {
+            imagesLoaded = imagesLoaded + 1;
+        };
+        // 使用内置颜色圆形代替图片
+        horseImages[dir] = null;
+    }
+    
+    // 延迟一下确保图片加载完成
+    setTimeout(function() {
+        if (imagesLoaded < totalImages) {
+            imagesLoaded = totalImages;
+            initGame();
+        }
+    }, 1000);
 }
 
 // 初始化游戏
@@ -92,7 +125,7 @@ function startTimer() {
 function render() {
     if (!ctx) return;
     
-    // 清空画布
+    // 清空画布 - 绿色草地背景
     ctx.fillStyle = '#4CAF50';
     ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
 
@@ -113,7 +146,7 @@ function render() {
         ctx.stroke();
     }
 
-    // 绘制马
+    // 绘制马 - 使用圆形+颜色
     var colors = {
         'left-top': '#8B4513',
         'right-top': '#D2691E',
@@ -125,24 +158,35 @@ function render() {
         var horse = horses[i];
         var x = horse.gridX * CELL_WIDTH + CELL_WIDTH / 2;
         var y = horse.gridY * CELL_HEIGHT + CELL_HEIGHT / 2;
+        var radius = Math.min(CELL_WIDTH, CELL_HEIGHT) * 0.4;
 
+        // 马身
         ctx.fillStyle = colors[horse.direction];
         ctx.beginPath();
-        ctx.arc(x, y, Math.min(CELL_WIDTH, CELL_HEIGHT) * 0.35, 0, Math.PI * 2);
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
         ctx.fill();
+        
+        // 马边框
+        ctx.strokeStyle = '#5D3A1A';
+        ctx.lineWidth = 2;
+        ctx.stroke();
 
         // 马头方向指示
         var dirObj = DIRECTIONS[horse.direction];
         ctx.fillStyle = '#FFD700';
         ctx.beginPath();
-        ctx.arc(x + dirObj.dx * 15, y + dirObj.dy * 15, 8, 0, Math.PI * 2);
+        ctx.arc(x + dirObj.dx * radius * 0.6, y + dirObj.dy * radius * 0.6, radius * 0.3, 0, Math.PI * 2);
         ctx.fill();
     }
 
-    // 绘制时间
+    // 绘制标题和时间
+    ctx.fillStyle = '#FFF';
+    ctx.font = 'bold 20px Arial';
+    ctx.fillText('Level ' + level, 10, 25);
+    
+    ctx.font = 'bold 18px Arial';
     ctx.fillStyle = timeLeft <= 15 ? '#FF5722' : '#FFF';
-    ctx.font = 'bold 24px Arial';
-    ctx.fillText('Time: ' + timeLeft, 20, 35);
+    ctx.fillText('Time: ' + timeLeft, GAME_WIDTH - 90, 25);
 }
 
 // 处理点击
@@ -150,8 +194,6 @@ function handleTouch(e) {
     if (isMoving || !canvas) return;
     
     var touchInfo = e;
-    
-    // 获取触摸坐标
     var clientX = 0;
     var clientY = 0;
     
@@ -161,15 +203,12 @@ function handleTouch(e) {
     } else if (touchInfo.changedTouches && touchInfo.changedTouches.length > 0) {
         clientX = touchInfo.changedTouches[0].clientX;
         clientY = touchInfo.changedTouches[0].clientY;
-    } else if (touchInfo.clientX) {
-        clientX = touchInfo.clientX;
-        clientY = touchInfo.clientY;
     } else {
         return;
     }
     
-    // 计算点击位置（简化版，假设canvas占满屏幕）
-    var scale = GAME_WIDTH / 375; // 假设标准宽度375
+    // 计算点击位置
+    var scale = GAME_WIDTH / 375;
     var canvasX = clientX * scale;
     var canvasY = clientY * scale;
 
@@ -216,7 +255,6 @@ function moveHorse(horse) {
 
         // 检查是否移出边界
         if (nextX < 0 || nextX >= COLS || nextY < 0 || nextY >= ROWS) {
-            // 移除该马
             var newHorses = [];
             for (i = 0; i < horses.length; i++) {
                 if (horses[i] !== horse) {
@@ -242,48 +280,32 @@ function moveHorse(horse) {
 }
 
 function showVictory() {
-    tt.showModal({
-        title: 'Victory',
-        content: 'Level ' + level + ' Complete!',
-        showCancel: false,
-        success: function() {
-            level = level + 1;
-            initGame();
-        }
+    level = level + 1;
+    tt.showToast({
+        title: 'Level ' + (level - 1) + ' Complete!',
+        duration: 2000
     });
+    setTimeout(initGame, 2000);
 }
 
 function showFail() {
-    tt.showModal({
-        title: 'Time Up',
-        content: 'Level ' + level + ' Failed!',
-        showCancel: false,
-        success: function() {
-            level = 1;
-            initGame();
-        }
+    level = 1;
+    tt.showToast({
+        title: 'Time Up!',
+        duration: 2000
     });
-}
-
-// 绑定按钮事件
-function bindButtons() {
-    if (typeof tt === 'undefined') return;
-    
-    // 下一关按钮
-    tt.onNextLevelBtnTap = function() {
-        level = level + 1;
-        initGame();
-    };
-    
-    // 重试按钮
-    tt.onRestartBtnTap = function() {
-        level = 1;
-        initGame();
-    };
+    setTimeout(initGame, 2000);
 }
 
 // 初始化 - 适配抖音小游戏环境
 function init() {
+    // 获取屏幕尺寸设置canvas
+    var systemInfo = tt.getSystemInfoSync();
+    GAME_WIDTH = systemInfo.windowWidth;
+    GAME_HEIGHT = systemInfo.windowHeight;
+    CELL_WIDTH = GAME_WIDTH / COLS;
+    CELL_HEIGHT = GAME_HEIGHT / ROWS;
+    
     // 创建canvas
     canvas = tt.createCanvas();
     canvas.width = GAME_WIDTH;
@@ -294,8 +316,8 @@ function init() {
     // 绑定事件
     canvas.addEventListener('touchstart', handleTouch, false);
     
-    // 启动游戏
-    initGame();
+    // 加载图片并启动游戏
+    loadHorseImages();
 }
 
 // 启动
