@@ -142,18 +142,14 @@ function render() {
     // 绘制时间
     ctx.fillStyle = timeLeft <= 15 ? '#FF5722' : '#FFF';
     ctx.font = 'bold 24px Arial';
-    ctx.fillText('\u23F1 ' + timeLeft + '\u79D2', 20, 35);
+    ctx.fillText(String.fromCharCode(0x23F1) + ' ' + timeLeft + String.fromCharCode(0x79D2), 20, 35);
 }
 
 // 处理点击
 function handleTouch(e) {
     if (isMoving || !canvas) return;
     
-    if (e.cancelable) {
-        e.preventDefault();
-    }
-    
-    var rect = canvas.getBoundingClientRect();
+    var rect = null;
     var clientX = 0;
     var clientY = 0;
     
@@ -166,6 +162,19 @@ function handleTouch(e) {
     } else if (e.clientX) {
         clientX = e.clientX;
         clientY = e.clientY;
+    } else {
+        return;
+    }
+    
+    // 尝试获取canvas位置
+    try {
+        rect = canvas.getBoundingClientRect();
+    } catch (e) {
+        rect = { left: 0, top: 0, width: GAME_WIDTH, height: GAME_HEIGHT };
+    }
+    
+    if (!rect) {
+        rect = { left: 0, top: 0, width: GAME_WIDTH, height: GAME_HEIGHT };
     }
     
     var x = clientX - rect.left;
@@ -340,29 +349,49 @@ function bindButtons() {
         shareBtn.onclick = function() {
             if (typeof tt !== 'undefined' && tt.showShareMenu) {
                 tt.showShareMenu({
-                    title: '\uD83D\uDC34 \u8D74\u9A6C\u5165\u5708',
-                    desc: '\u6211\u6B63\u5728\u7B2C' + level + '\u5173\uFF0C\u5FEB\u6765\u6311\u6218\u6211\uFF01'
+                    title: String.fromCharCode(0xD83D, 0xDC34) + ' ' + String.fromCharCode(0x8D74, 0x9A6C, 0x5165, 0x5708),
+                    desc: String.fromCharCode(0x6211) + String.fromCharCode(0x6B63) + String.fromCharCode(0x5728) + String.fromCharCode(0x7B2C) + level + String.fromCharCode(0x5173) + String.fromCharCode(0xFF0C) + String.fromCharCode(0x5FEB) + String.fromCharCode(0x6765) + String.fromCharCode(0x6311) + String.fromCharCode(0x6218) + String.fromCharCode(0x6211) + String.fromCharCode(0xFF01)
                 });
             }
         };
     }
 }
 
-// 初始化
-function main() {
-    // 获取canvas
+// 初始化 - 适配抖音小游戏环境
+function init() {
+    // 尝试获取DOM中的canvas
     var gameCanvas = document.getElementById('gameCanvas');
-    if (!gameCanvas) {
-        setTimeout(main, 100);
+    
+    if (gameCanvas) {
+        // 使用DOM中的canvas
+        canvas = gameCanvas;
+    } else if (typeof tt !== 'undefined' && tt.createCanvas) {
+        // 抖音小游戏环境，创建canvas
+        canvas = tt.createCanvas();
+    } else {
+        // 浏览器环境
+        canvas = document.createElement('canvas');
+        document.body.appendChild(canvas);
+    }
+    
+    if (!canvas) {
+        setTimeout(init, 100);
         return;
     }
     
-    canvas = gameCanvas;
     ctx = canvas.getContext('2d');
     
     // 设置canvas尺寸
     canvas.width = GAME_WIDTH;
     canvas.height = GAME_HEIGHT;
+    
+    // 尝试将canvas添加到页面
+    if (!document.getElementById('gameCanvas') && canvas.parentNode === null) {
+        var container = document.querySelector('.game-container');
+        if (container) {
+            container.appendChild(canvas);
+        }
+    }
 
     // 绑定事件
     canvas.addEventListener('touchstart', handleTouch, false);
@@ -374,11 +403,5 @@ function main() {
     initGame();
 }
 
-// 等待DOM加载完成
-if (typeof document !== 'undefined') {
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', main);
-    } else {
-        main();
-    }
-}
+// 启动
+setTimeout(init, 500);
