@@ -1,9 +1,9 @@
 // 赶马入圈 - 抖音小游戏
-// 游戏配置 - 竖屏
+// 游戏配置
 var COLS = 10;
 var ROWS = 14;
-var GAME_WIDTH = 375;  // 竖屏宽度
-var GAME_HEIGHT = 667; // 竖屏高度
+var GAME_WIDTH = 375;
+var GAME_HEIGHT = 500;
 var CELL_WIDTH = GAME_WIDTH / COLS;
 var CELL_HEIGHT = GAME_HEIGHT / ROWS;
 
@@ -15,9 +15,6 @@ var timerInterval = null;
 var isMoving = false;
 var canvas = null;
 var ctx = null;
-var horseImages = {};
-var imagesLoaded = 0;
-var totalImages = 4;
 
 // 马的朝向
 var DIRECTIONS = {
@@ -37,36 +34,6 @@ function isCellOccupied(gridX, gridY) {
         }
     }
     return false;
-}
-
-// 加载马图片
-function loadHorseImages() {
-    var directions = ['left-top', 'right-top', 'left-bottom', 'right-bottom'];
-    var i;
-    
-    for (i = 0; i < directions.length; i++) {
-        var dir = directions[i];
-        var img = tt.createImage();
-        img.onload = function() {
-            imagesLoaded = imagesLoaded + 1;
-            if (imagesLoaded >= totalImages) {
-                initGame();
-            }
-        };
-        img.onerror = function() {
-            imagesLoaded = imagesLoaded + 1;
-        };
-        // 使用内置颜色圆形代替图片
-        horseImages[dir] = null;
-    }
-    
-    // 延迟一下确保图片加载完成
-    setTimeout(function() {
-        if (imagesLoaded < totalImages) {
-            imagesLoaded = totalImages;
-            initGame();
-        }
-    }, 1000);
 }
 
 // 初始化游戏
@@ -207,10 +174,21 @@ function handleTouch(e) {
         return;
     }
     
+    // 获取canvas位置
+    var rect = null;
+    try {
+        rect = canvas.getBoundingClientRect();
+    } catch(err) {
+        rect = { left: 0, top: 0, width: GAME_WIDTH, height: GAME_HEIGHT };
+    }
+    
     // 计算点击位置
-    var scale = GAME_WIDTH / 375;
-    var canvasX = clientX * scale;
-    var canvasY = clientY * scale;
+    var x = clientX - rect.left;
+    var y = clientY - rect.top;
+    var scaleX = GAME_WIDTH / rect.width;
+    var scaleY = GAME_HEIGHT / rect.height;
+    var canvasX = x * scaleX;
+    var canvasY = y * scaleY;
 
     var gridX = Math.floor(canvasX / CELL_WIDTH);
     var gridY = Math.floor(canvasY / CELL_HEIGHT);
@@ -280,45 +258,125 @@ function moveHorse(horse) {
 }
 
 function showVictory() {
-    level = level + 1;
-    tt.showToast({
-        title: 'Level ' + (level - 1) + ' Complete!',
-        duration: 2000
-    });
-    setTimeout(initGame, 2000);
+    var victoryLevel = document.getElementById('victoryLevel');
+    if (victoryLevel) {
+        victoryLevel.innerText = level.toString();
+    }
+    var overlay = document.getElementById('victoryOverlay');
+    if (overlay) {
+        overlay.classList.add('show');
+    }
 }
 
 function showFail() {
-    level = 1;
-    tt.showToast({
-        title: 'Time Up!',
-        duration: 2000
-    });
-    setTimeout(initGame, 2000);
+    var failLevel = document.getElementById('failLevel');
+    if (failLevel) {
+        failLevel.innerText = level.toString();
+    }
+    var overlay = document.getElementById('failOverlay');
+    if (overlay) {
+        overlay.classList.add('show');
+    }
 }
 
-// 初始化 - 适配抖音小游戏环境
+function hideVictory() {
+    var overlay = document.getElementById('victoryOverlay');
+    if (overlay) {
+        overlay.classList.remove('show');
+    }
+}
+
+function hideFail() {
+    var overlay = document.getElementById('failOverlay');
+    if (overlay) {
+        overlay.classList.remove('show');
+    }
+}
+
+// 绑定按钮事件
+function bindButtons() {
+    var restartBtn = document.getElementById('restartBtn');
+    if (restartBtn) {
+        restartBtn.onclick = function() {
+            hideFail();
+            hideVictory();
+            level = 1;
+            var levelSpan = document.getElementById('level');
+            if (levelSpan) {
+                levelSpan.innerText = '1';
+            }
+            initGame();
+        };
+    }
+
+    var nextLevelBtn = document.getElementById('nextLevelBtn');
+    if (nextLevelBtn) {
+        nextLevelBtn.onclick = function() {
+            level = level + 1;
+            var levelSpan = document.getElementById('level');
+            if (levelSpan) {
+                levelSpan.innerText = level.toString();
+            }
+            hideVictory();
+            initGame();
+        };
+    }
+
+    var retryBtn = document.getElementById('retryBtn');
+    if (retryBtn) {
+        retryBtn.onclick = function() {
+            hideFail();
+            level = 1;
+            var levelSpan = document.getElementById('level');
+            if (levelSpan) {
+                levelSpan.innerText = '1';
+            }
+            initGame();
+        };
+    }
+
+    var shareBtn = document.getElementById('shareBtn');
+    if (shareBtn) {
+        shareBtn.onclick = function() {
+            if (typeof tt !== 'undefined' && tt.showShareMenu) {
+                tt.showShareMenu({
+                    title: 'Horse Game',
+                    desc: 'Level ' + level + ' completed!'
+                });
+            }
+        };
+    }
+}
+
+// 初始化
 function init() {
-    // 获取屏幕尺寸设置canvas
-    var systemInfo = tt.getSystemInfoSync();
-    GAME_WIDTH = systemInfo.windowWidth;
-    GAME_HEIGHT = systemInfo.windowHeight;
-    CELL_WIDTH = GAME_WIDTH / COLS;
-    CELL_HEIGHT = GAME_HEIGHT / ROWS;
+    // 获取canvas
+    var gameCanvas = document.getElementById('gameCanvas');
+    if (!gameCanvas) {
+        setTimeout(init, 100);
+        return;
+    }
     
-    // 创建canvas
-    canvas = tt.createCanvas();
-    canvas.width = GAME_WIDTH;
-    canvas.height = GAME_HEIGHT;
-    
+    canvas = gameCanvas;
     ctx = canvas.getContext('2d');
     
+    // 设置canvas尺寸
+    canvas.width = GAME_WIDTH;
+    canvas.height = GAME_HEIGHT;
+
     // 绑定事件
     canvas.addEventListener('touchstart', handleTouch, false);
+    canvas.addEventListener('click', handleTouch, false);
     
-    // 加载图片并启动游戏
-    loadHorseImages();
+    bindButtons();
+    
+    // 启动游戏
+    initGame();
 }
 
 // 启动
-init();
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+} else {
+    init();
+}
