@@ -1,0 +1,16 @@
+{
+  "miniprogramRoot": "./",
+  "projectname": "ganma-rujuan",
+  "appid": "",
+  "compileType": "game",
+  "libVersion": "1.26.0",
+  "setting": {
+    "urlCheck": false,
+    "es6": true,
+    "enhance": true,
+    "postcss": true,
+    "minified": true,
+    "checkInvalidKey": true
+  },
+  "condition": {}
+}

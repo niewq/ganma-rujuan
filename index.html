@@ -2,18 +2,19 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>赶马入圈 - 抖音小游戏</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       font-family: 'Noto Sans SC', "Microsoft YaHei", sans-serif;
-      background: url('./assets/grassland_bg.png') center/cover no-repeat
+      background: #8BC34A;
       min-height: 100vh;
       display: flex;
       flex-direction: column;
       align-items: center;
       padding: 20px;
+      overflow: hidden;
     }
     .header {
       width: 100%;
@@ -27,1261 +28,341 @@
       box-shadow: 0 4px 20px rgba(0,0,0,0.1);
       margin-bottom: 20px;
     }
-    .title {
-      font-size: 24px;
-      font-weight: bold;
-      background: linear-gradient(135deg, #FF9800, #FF7043);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-    .stats { display: flex; gap: 15px; }
-    .stat-item {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 8px 15px;
-      background: linear-gradient(135deg, #E8F5E9, #C8E6C9);
-      border-radius: 12px;
-    }
-    .stat-label { font-size: 12px; color: #666; }
-    .stat-value { font-size: 18px; font-weight: bold; color: #4CAF50; }
-    .game-container { position: relative; z-index: 1;
-      background: rgba(255,255,255,0.95);
-      border-radius: 24px;
-      padding: 20px;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+    .title { font-size: 28px; font-weight: bold; color: #333; }
+    .level { font-size: 18px; color: #666; }
+    .game-container {
       position: relative;
+      width: 100%;
+      max-width: 500px;
+      aspect-ratio: 3 / 4;
+      background: linear-gradient(135deg, #4CAF50 0%, #8BC34A 50%, #CDDC39 100%);
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
     }
-    
-    /* 新手引导遮罩 */
-    .guide-overlay {
+    .game-canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    .footer {
+      margin-top: 20px;
+      display: flex;
+      gap: 15px;
+    }
+    .btn {
+      padding: 15px 40px;
+      font-size: 18px;
+      font-weight: bold;
+      color: white;
+      background: linear-gradient(135deg, #FF9800, #FF5722);
+      border: none;
+      border-radius: 30px;
+      cursor: pointer;
+      box-shadow: 0 5px 20px rgba(255,152,0,0.4);
+    }
+    .victory-overlay, .fail-overlay {
       position: fixed;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
-      background: rgba(0,0,0,0.7);
-      z-index: 1000;
-      display: none;
-      justify-content: center;
-      align-items: center;
+      background: rgba(0,0,0,0.8);
+      display: flex;
       flex-direction: column;
-    }
-    .guide-overlay.active { display: flex; }
-    .guide-content {
-      background: white;
-      padding: 30px;
-      border-radius: 20px;
-      text-align: center;
-      max-width: 300px;
-    }
-    .guide-title { font-size: 20px; font-weight: bold; color: #FF9800; margin-bottom: 15px; }
-    .guide-text { font-size: 16px; color: #333; margin-bottom: 20px; line-height: 1.6; }
-    .guide-arrow {
-      font-size: 40px;
-      animation: bounce 1s infinite;
-    }
-    @keyframes bounce {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-10px); }
-    }
-    .guide-progress { display: flex; gap: 8px; margin-bottom: 20px; }
-    .guide-dot { width: 10px; height: 10px; border-radius: 50%; background: #ddd; }
-    .guide-dot.active { background: #FF9800; }
-    canvas { display: block; border-radius: 16px; }
-    .controls {
-      display: flex;
-      gap: 12px;
-      margin-top: 20px;
-      justify-content: center;
-      flex-wrap: wrap;
-    }
-    .btn {
-      padding: 12px 28px;
-      font-size: 16px;
-      border: none;
-      border-radius: 25px;
-      cursor: pointer;
-      transition: all 0.3s;
-      font-weight: bold;
-      font-family: inherit;
-    }
-    .btn:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0,0,0,0.2); }
-    .btn-primary { background: linear-gradient(135deg, #FF9800, #FF7043); color: white; }
-    .btn-secondary { background: linear-gradient(135deg, #66BB6A, #43A047); color: white; }
-    .level-select {
-      margin-top: 20px;
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      justify-content: center;
-      max-width: 400px;
-      padding: 15px;
-      background: rgba(255,255,255,0.8);
-      border-radius: 16px;
-    }
-    .level-btn {
-      width: 45px;
-      height: 45px;
-      border: none;
-      border-radius: 12px;
-      background: linear-gradient(135deg, #E8F5E9, #C8E6C9);
-      color: #4CAF50;
-      font-weight: bold;
-      cursor: pointer;
-      transition: all 0.3s;
-      font-size: 16px;
-      font-family: inherit;
-    }
-    .level-btn:hover { transform: scale(1.1); }
-    .level-btn.active {
-      background: linear-gradient(135deg, #4CAF50, #388E3C);
-      color: white;
-      transform: scale(1.1);
-    }
-    .modal {
-      position: fixed;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      background: rgba(0,0,0,0.6);
-      display: none;
-      justify-content: center;
       align-items: center;
+      justify-content: center;
       z-index: 1000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.5s ease;
     }
-    .modal.show { display: flex; }
-    .modal-content {
-      background: linear-gradient(135deg, #fff, #f5f5f5);
-      padding: 40px;
-      border-radius: 24px;
-      text-align: center;
-      border: 4px solid #4CAF50;
-      animation: popIn 0.4s ease;
-      max-width: 90%;
+    .victory-overlay.show, .fail-overlay.show {
+      opacity: 1;
+      pointer-events: auto;
     }
-    @keyframes popIn {
-      from { transform: scale(0.3); opacity: 0; }
-      to { transform: scale(1); opacity: 1; }
+    .victory-text {
+      font-size: 60px;
+      color: #FFD700;
+      text-shadow: 0 0 30px rgba(255,215,0,0.8);
     }
-    .modal-title { font-size: 28px; color: #4CAF50; margin-bottom: 16px; font-weight: bold; }
-    .modal-stats { font-size: 16px; color: #666; margin-bottom: 24px; }
-    .modal-buttons { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
-    .help-content { text-align: left; max-height: 60vh; overflow-y: auto; }
-    .help-item { display: flex; align-items: center; margin: 12px 0; padding: 12px; background: #E8F5E9; border-radius: 12px; }
-    .help-icon {
-      width: 40px; height: 40px;
-      background: #4CAF50;
-      border-radius: 10px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      font-size: 20px;
-      margin-right: 12px;
-      flex-shrink: 0;
-    }
-    .help-text { font-size: 14px; color: #333; }
-    @media (max-width: 500px) {
-      .header { flex-direction: column; gap: 10px; }
-      .btn { padding: 10px 20px; font-size: 14px; }
-    }
+    .fail-text { font-size: 48px; color: #FF5722; }
+    .victory-sub { font-size: 24px; color: white; margin-top: 20px; }
+    .victory-actions { margin-top: 30px; display: flex; gap: 15px; }
   </style>
 </head>
 <body>
   <div class="header">
     <div class="title">🐴 赶马入圈</div>
-    <div class="stats">
-      <div class="stat-item"><span class="stat-label">关卡</span><span class="stat-value" id="levelNum">1</span></div>
-      <div class="stat-item"><span class="stat-label">步数</span><span class="stat-value" id="moveCount">0</span></div>
-      <div class="stat-item"><span class="stat-label">目标</span><span class="stat-value" id="targetCount">0/1</span></div>
+    <div class="level">第 <span id="level">1</span> 关</div>
+  </div>
+  <div class="game-container">
+    <canvas id="gameCanvas" class="game-canvas"></canvas>
+  </div>
+  <div class="footer">
+    <button class="btn" id="restartBtn">🔄 再来一次</button>
+    <button class="btn" id="nextBtn">下一关 ▶</button>
+  </div>
+  <div class="victory-overlay" id="victoryOverlay">
+    <div class="victory-text">🎉 胜利!</div>
+    <div class="victory-sub">恭喜通关第 <span id="victoryLevel">1</span> 关!</div>
+    <div class="victory-actions">
+      <button class="btn" id="shareBtn">📤 分享</button>
+      <button class="btn" id="nextLevelBtn">下一关 ▶</button>
     </div>
   </div>
-  <div class="game-container"><canvas id="gameCanvas"></canvas></div>
-  <div class="controls">
-    <button class="btn btn-secondary" onclick="showHelp()">📖 玩法</button>
-    <button class="btn btn-secondary" onclick="game.resetLevel()">🔄 重置</button>
-  </div>
-  <div class="level-select" id="levelSelect"></div>
-  <div class="modal" id="winModal">
-    <div class="modal-content">
-      <div class="modal-title">🎉 通关成功！</div>
-      <div class="modal-stats" id="winStats">步数: 0 | 用时: 0秒</div>
-      <div class="modal-buttons">
-        <button class="btn btn-secondary" onclick="game.nextLevel()">下一关 ➡️</button>
-        <button class="btn btn-primary" onclick="game.replayLevel()">🔄 重玩</button>
-      </div>
-    </div>
-  </div>
-  <div class="modal" id="helpModal">
-    <div class="modal-content">
-      <div class="modal-title">📖 玩法说明</div>
-      <div class="help-content">
-        <div class="help-item"><div class="help-icon">🐴</div><div class="help-text">马有朝向（↑↓←→），点击马选择方向</div></div>
-        <div class="help-item"><div class="help-icon">⬆️</div><div class="help-text">点击马的朝向箭头改变方向</div></div>
-        <div class="help-item"><div class="help-icon">� straw</div><div class="help-text">点击干草堆，马会前进一格</div></div>
-        <div class="help-item"><div class="help-icon">🏠</div><div class="help-text">把所有马赶进马圈即可通关</div></div>
-      </div>
-      <div class="modal-buttons" style="margin-top:20px">
-        <button class="btn btn-primary" onclick="closeHelp()">知道了</button>
-      </div>
+  <div class="fail-overlay" id="failOverlay">
+    <div class="fail-text">⏰ 时间到!</div>
+    <div class="victory-sub">第 <span id="failLevel">1</span> 关挑战失败</div>
+    <div class="victory-actions">
+      <button class="btn" id="retryBtn">🔄 再试一次</button>
     </div>
   </div>
   <script>
-    // 马的图片
-    const horseImages = {
-      'up': new Image(),
-      'right': new Image(),
-      'down': new Image(),
-      'left': new Image()
+    // 抖音小游戏适配
+    const canvas = tt.createCanvas();
+    const ctx = canvas.getContext('2d');
+    
+    // 游戏配置
+    const COLS = 10;
+    const ROWS = 14;
+    const GAME_WIDTH = 500;
+    const GAME_HEIGHT = 667;
+    const CELL_WIDTH = GAME_WIDTH / COLS;
+    const CELL_HEIGHT = GAME_HEIGHT / ROWS;
+    
+    // 设置canvas尺寸
+    canvas.width = GAME_WIDTH;
+    canvas.height = GAME_HEIGHT;
+    document.getElementById('gameCanvas').width = GAME_WIDTH;
+    document.getElementById('gameCanvas').height = GAME_HEIGHT;
+    
+    // 游戏状态
+    let level = 1;
+    let horses = [];
+    let timeLeft = 120;
+    let timerInterval = null;
+    let isMoving = false;
+    
+    // 马的朝向
+    const DIRECTIONS = {
+      'left-top': { dx: -1, dy: -1 },
+      'right-top': { dx: 1, dy: -1 },
+      'left-bottom': { dx: -1, dy: 1 },
+      'right-bottom': { dx: 1, dy: 1 }
     };
-    horseImages['up'].src = 'data:image/png;base64,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';
-    horseImages['right'].src = 'data:image/png;base64,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';
-    horseImages['down'].src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIwAAACMEAYAAAD+UJ19AAAAIGNIUk0AAHomAACAhAAA+gAAAIDoAAB1MAAA6mAAADqYAAAXcJy6UTwAAAAGYktHRP///////wlY99wAAAAHdElNRQfqAwsHLBW6CfZVAAAKo0lEQVR42u3dfXBU1RnH8U0wkOFVGxWotAIRo1DHFoWhiCUFwapUGXmp2irYqbS24IRBRioWilMtCBaK2lFrO82oFbG0A4JaIwpWwKJS7RQUaghaGV6UYiDKS5ps//idrSWzSTbJvfuce/f7+ec3J4G7z152H865d/feRAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAdOVZF4BwLVw4alRRUYdnNOp+prLvQOXZ05XnLFT2K1H2fl/ZY7Ky2yXKAvf3arcoq59X7v2NcldP5Y63lNunubxXWbVNue+jmTMrKg4cODbOev8gXDSYiFMD6bpJo69cqBzzD+Wkd5WnjbeuM70PXcMpP0O5pli5ZZ0a0KHzrCtE29BgIkKNpOhtja64WXnbC8r+7azrC8fbnZTzS5Vr7lPjOVBsXRkyQ4PxjBpJ3qsaDXVLlTv7KUd82bo+P7xYoZyzW7nxHDWe5FetK8OJaDDG1FDaTdHoyh8r/7BUmf8L6/qiof4J5fhrlaumquHUPWBdWa6jwWSZGkqiUKORa5QVW5V506zri4fkEuWo85VrL1fDSRy1rizX0GCyRI3ljIMaPf6YcvhU67pyw3p3luvbw9VodvezrihX0GBCpsZyjTtm8MQl1vUgkUgkrq1Qo1k22rqSuKPBBMx97qS9Rg9NUE56zLoupFN+t/L7893ncg5bVxQ3NJiAqLGcckSj1x5VFt9kXRcyUekOrg+6XY3mYFfriuKCBtNGaiyn/1WjvW6mkrfUui60RvJWZY8b1Gj2n29dUdTRYFrJzVie1Oijy5X5na3rQhCS7oN8RW7pdHCidUVRlW9dQNSosRQs0mhTUkljiZe8SuWmDe7f++fWFUUVDaZVFp+uLPmWdSUIU8kS5eL21pVEFUukDOl/stHuE7d/fsi6Hli41H1C+Hk+IZwhGkwz1Fg6Vmn0SW/reuCDTvvVaD7tbl2J71giZaRsnnUF8EnZvdYVRAUzmEa466xcrVH1Cut64KNuN7nr1jxiXYmvmME0aWJf6wrgs4n9rSvwHTOYBty3nS/S6HAXZednreuCj2q+oexyyH1be5N1Rb5hBpNWz9uUNBY0pfNzyp73WFfiKxpMWoM5DYkWGHyXdQW+osGkVVpqXQGipJTT1Y2gwaQ19A7rChAlQ/9uXYGvaDBplQywrgBRUvKxdQW+osGk1e0t6woQJd0WW1fgKxpMWtW9rCtAlFRz/Z9G0GDS2n6ZdQWIkncetq7AVzSYtDa+Y10BomTTDusKfEWDSWvdKdYVIErW3W9dga9oMGltXmBdAaJk83XWFfjqJOsC/LTnRmWNu3Jd51XWFcFHNWOVe/5tXYmvmME04L605u4SMH2ydT3w2fST3evlL9aV+IoG06Tlq60rgM+W/8u6At+1sy7AVxUVO3ceOXLszdGji4s7dqx1B31HDrGuCz6YPVYzlxees67Ed8xgMrJkinUF8MkSbmOSIRpMM9zFnTtqdOlM63pg6dIp7vXAlewyxBIpQ1oyVW7Ukum0ev108Net60I2PLBWjeW+MutKooYZTKtM76DcPsy6EoRp+17l9G3WlUQV1+RtJXdv6gc1OvCSMm+ZdV0IQv3rylNfd/emvtm6oqiiwbSRGs3p/9Ro7+PKvLnWdaE1krcoe0xUY9l/sXVFUUeDCYib0bhPdL42VVn8uHVdyETlK8pBw9yMhfdFQDgGExD3wvycRgPcUqn8Geu60JTywcr+Q2gs4WCHhkwzm2vWavTECOt6kEgkEteuV0NZVmpdSdwxgwmZeyGP1KjXZuX6H1jXlVvWT1b2Ok5jyS5mMFnm7hxZqNHI55UVbyrzplnXFw9Jd6/oUWcp117mvpR41LqyXEODMaaG0+57Gl31J+VTW5T5X7SuLxrq3dJz/E+Vq36rhlJXbl1ZrqPBeEYNJ2+jRkPd3Q3uLFKOmGBdnx9e3K+c4xrxxiI1lORg68pwIhpMRKjxFH2g0RUzlLNcIzr3fev6wrGtRrlgtHLNw2okB86zrgyZocFEnBpP110aDfymcsw+5aSDylOPW9eZ3od3K8u/pFw9SPm3bWokhy6xrhBtQ4OJOTWgDu4Df907Kfv0UZa4DwSW3Ks8t4ey/9PKHiuUHdzPE4+6vF5xrEq593zlNrdEefsi5fbZLn+trNql3PeRGsixUdb7B+GiweQo13jqNJqxW3nXF4LZ+h3ubM2iha6RzLF+vrBBg8kxaiy93UXMdwxXFnQN59HqdinPvkGNZifXrs0xfNAuR6ix9HFLpSp3rCasxpLSrrey8mX3+D+y3g/ILhpMzOmNXegOor7zedtqdvZ0S7PbrfcLsoMGkxNmrlO2LzUuxB30nTHPuA5kCcdgYkozhc7urM/h71jXk16XEh2bqeHezjHFDCbWRi6yrqBppcxkYo4GE2sTOlhX0LRxfPkw5mgwsTbS84tVj3jQugKEiwYTaz0OW1fQTH0PW1eAcNFgYqp2St2zyUm7H3m6Zsf6T2alLnyVSKTG//mg/tNkWXiPn9p+Y49fe13dyuT1+/h2eMzRYGLqyVu2zq8prP7uy/PeO370/+5HmRo/e/K7r31aGN7jp7bf2OMva7d1XM2xQ69Y7yeEi9PUsZZMNvcn3BX2ApeasWQmj9dhTDGDiamC1flbE6/eP6mx339t7pntCxeG9/jNbb9gQv7vExX3cRYp5mgwMVU7pn5AYsitA0rGFv2sYPKGzamfp974l3181qCOIb69U9tv2GhKOhRNLpi4YVjtU/XXJUbNXGq9nxAupqYx576LNEuj6jJl++421dS5Yy6d9rnLOIy33j8IFw0mR7jLNLhLbladYVNFnzfUWHZdaL0/kB0skXKEe2P30qhvR+XxinAftdYtjop/SWPJTTSYHKM3etURjbq9p/xJabCPMneIsstwd6GpMuvnDRsskSLCnU5218hNXq28yl37dvXv9EauP7tt2+9ygUYjHlKOc0upEY8pe7r7Nu0ZqHxxuTJ1H6eXbnTfjm71zEh15LtvV4+ZrFy5QZn3R3f6e1yoOxuBocFEhN54fR/QqPKH6f9UcA0nu8+rsYbSUPGv3IyIK+NFxEnWBaAlJvRq+vefvTH1xr1qqEb+NJxGGko/9+sNTf/t1PNfYP00kCFmMJ5LvzRqrezPcFo2Q8kUS6WoYAYTCX33BrOd8Gc4bZuhtHR/7AxmcwgNZ5EiobmlUWulGk5dv7Ztp6HU9to6U8n2/kDQaDCeOnFpNP/KcB7l7pXKwqHBbje1vdT2gzb/yhP3D3zFEslrQS2NGrrgFS2JtowNesvuKwCbNJo9Vo1ghbvh2hvDwtk/LJV8xQzGa0EtBT6bqbjGcnG2nsGJjxf0zIalku84i+SZYM8a/W+mkrWG0rLnOTCgmQ1nlXzFDMZLrV0a2c1UWirYmU1YS0m0FcdgvNTSqX94x1TCFswxGz6A5ytmMJ5o2Vmj6MxUWqp1MxvOKvmKGYxXmpvqR3em0lKtm9lwVsk3zGC80nBpFN+ZSktlNrPhrBKQlv6HTiZPPLuC5qT2V2r/WdcDAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABy038BDGXtX+YzwQ4AAAAASUVORK5CYII=';
-    horseImages['left'].src = 'data:image/png;base64,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';
-
-    // 干草图片
-    const hayImg = new Image();
-    hayImg.src = 'https://dashscope-result-wlcb-acdr-1.oss-cn-wulanchabu-acdr-1.aliyuncs.com/7d/e3/20260311/cfc32567/6f601e6c-f255-4813-b17f-4615d7144bf51951695744.png?Expires=1773827529';
-
-    // 绘制马的函数
-    function drawHorse(ctx, x, y, size, direction, selected) {
-      // 选中光晕
-      if (selected) {
-        ctx.fillStyle = 'rgba(255, 152, 0, 0.4)';
-        ctx.beginPath();
-        ctx.arc(x + size/2, y + size/2, size*0.45, 0, Math.PI*2);
-        ctx.fill();
+    const DIRECTION_KEYS = Object.keys(DIRECTIONS);
+    
+    // 检查格子是否被占用
+    function isCellOccupied(gridX, gridY) {
+      return horses.some(h => h.gridX === gridX && h.gridY === gridY);
+    }
+    
+    // 初始化游戏
+    function initGame() {
+      horses = [];
+      const horseCount = 4 + Math.floor((level - 1) / 5);
+      const centerX = Math.floor(COLS / 2);
+      const centerY = Math.floor(ROWS / 2);
+      
+      for (let i = 0; i < horseCount; i++) {
+        const direction = DIRECTION_KEYS[Math.floor(Math.random() * DIRECTION_KEYS.length)];
+        let gridX, gridY, attempts = 0;
+        
+        do {
+          gridX = centerX - 1 + Math.floor(Math.random() * 3);
+          gridY = centerY - 1 + Math.floor(Math.random() * 3);
+          attempts++;
+        } while (isCellOccupied(gridX, gridY) && attempts < 20);
+        
+        if (!isCellOccupied(gridX, gridY)) {
+          horses.push({ gridX, gridY, direction });
+        }
       }
-      // 绘制马图片
-      ctx.drawImage(horseImages[direction], x + 5, y + 5, size - 10, size - 10);
-    }
-
-    // 绘制干草堆
-    function drawHay(ctx, x, y, size) {
-      ctx.drawImage(hayImg, x + 10, y + 10, size - 20, size - 20);
-    }
-
-    // 绘制干草堆
-    function drawHay(ctx, x, y, size) {
-      const cx = x + size/2;
-      const cy = y + size/2;
       
-      // 干草堆底色
-      ctx.fillStyle = '#FFD54F';
-      ctx.beginPath();
-      ctx.ellipse(cx, cy + 5, size * 0.4, size * 0.25, 0, 0, Math.PI * 2);
-      ctx.fill();
+      timeLeft = getTimeLimit();
+      startTimer();
+      render();
+    }
+    
+    function getTimeLimit() {
+      if (level <= 5) return 120;
+      if (level <= 10) return 90;
+      if (level <= 20) return 75;
+      if (level <= 30) return 60;
+      return 45;
+    }
+    
+    function startTimer() {
+      if (timerInterval) clearInterval(timerInterval);
+      timerInterval = setInterval(() => {
+        timeLeft--;
+        if (timeLeft <= 0) {
+          clearInterval(timerInterval);
+          showFail();
+        }
+        render();
+      }, 1000);
+    }
+    
+    // 渲染游戏
+    function render() {
+      // 清空画布
+      ctx.fillStyle = '#4CAF50';
+      ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
       
-      // 稻草纹理
-      ctx.strokeStyle = '#FFA000';
-      ctx.lineWidth = 2;
-      for (let i = 0; i < 5; i++) {
+      // 绘制网格
+      ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+      ctx.lineWidth = 1;
+      for (let i = 0; i <= COLS; i++) {
         ctx.beginPath();
-        const angle = (i / 5) * Math.PI - Math.PI/2;
-        ctx.moveTo(cx, cy);
-        ctx.lineTo(cx + Math.cos(angle) * size * 0.35, cy + Math.sin(angle) * size * 0.25);
+        ctx.moveTo(i * CELL_WIDTH, 0);
+        ctx.lineTo(i * CELL_WIDTH, GAME_HEIGHT);
+        ctx.stroke();
+      }
+      for (let j = 0; j <= ROWS; j++) {
+        ctx.beginPath();
+        ctx.moveTo(0, j * CELL_HEIGHT);
+        ctx.lineTo(GAME_WIDTH, j * CELL_HEIGHT);
         ctx.stroke();
       }
       
-      // 绳子
-      ctx.strokeStyle = '#8D6E63';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.ellipse(cx, cy, size * 0.3, size * 0.15, 0, 0, Math.PI * 2);
-      ctx.stroke();
+      // 绘制马
+      horses.forEach(horse => {
+        const x = horse.gridX * CELL_WIDTH + CELL_WIDTH / 2;
+        const y = horse.gridY * CELL_HEIGHT + CELL_HEIGHT / 2;
+        
+        // 马的颜色根据朝向
+        const colors = {
+          'left-top': '#8B4513',
+          'right-top': '#D2691E',
+          'left-bottom': '#A0522D',
+          'right-bottom': '#CD853F'
+        };
+        
+        ctx.fillStyle = colors[horse.direction];
+        ctx.beginPath();
+        ctx.arc(x, y, Math.min(CELL_WIDTH, CELL_HEIGHT) * 0.35, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // 马头方向指示
+        const dir = DIRECTIONS[horse.direction];
+        ctx.fillStyle = '#FFD700';
+        ctx.beginPath();
+        ctx.arc(x + dir.dx * 15, y + dir.dy * 15, 8, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      
+      // 绘制时间
+      ctx.fillStyle = timeLeft <= 15 ? '#FF5722' : '#FFF';
+      ctx.font = 'bold 24px Arial';
+      ctx.fillText(`⏱️ ${timeLeft}秒`, 20, 35);
     }
-
-    class Game {
-      constructor() {
-        this.canvas = document.getElementById('gameCanvas');
-        this.ctx = this.canvas.getContext('2d');
-        this.cellSize = 70;
-        this.padding = 20;
-        this.initLevels();
-        this.loadLevel(1);
-        this.setupEvents();
+    
+    // 处理点击
+    function handleTouch(e) {
+      const rect = canvas.getBoundingClientRect();
+      const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+      const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+      
+      const scaleX = GAME_WIDTH / rect.width;
+      const scaleY = GAME_HEIGHT / rect.height;
+      const canvasX = x * scaleX;
+      const canvasY = y * scaleY;
+      
+      const gridX = Math.floor(canvasX / CELL_WIDTH);
+      const gridY = Math.floor(canvasY / CELL_HEIGHT);
+      
+      // 找到点击的马
+      const horse = horses.find(h => h.gridX === gridX && h.gridY === gridY);
+      if (horse && !isMoving) {
+        moveHorse(horse);
       }
-
-      initLevels() {
-        this.levels = extendedLevels || [
-          { id: 1, gridSize: 3, horses: [{ id: 1, x: 0, y: 0, dir: 'down', inPen: false }], pens: [{ x: 2, y: 2 }], hay: [{ x: 1, y: 1 }], walls: [] },
-          { id: 2, gridSize: 3, horses: [{ id: 1, x: 0, y: 0, dir: 'right', inPen: false }, { id: 2, x: 2, y: 0, dir: 'left', inPen: false }], pens: [{ x: 1, y: 2 }], hay: [{ x: 0, y: 2 }, { x: 2, y: 2 }], walls: [] },
-          { id: 3, gridSize: 4, horses: [{ id: 1, x: 0, y: 0, dir: 'right', inPen: false }, { id: 2, x: 1, y: 2, dir: 'up', inPen: false }], pens: [{ x: 1, y: 1 }], hay: [{ x: 2, y: 0 }, { x: 2, y: 3 }], walls: [] },
-          { id: 4, gridSize: 4, horses: [{ id: 1, x: 0, y: 0, dir: 'right', inPen: false }, { id: 2, x: 3, y: 0, dir: 'left', inPen: false }, { id: 3, x: 0, y: 3, dir: 'up', inPen: false }], pens: [{ x: 1, y: 1 }, { x: 2, y: 2 }], hay: [{ x: 1, y: 0 }, { x: 2, y: 3 }, { x: 3, y: 1 }], walls: [] },
-          { id: 5, gridSize: 4, horses: [{ id: 1, x: 0, y: 1, dir: 'right', inPen: false }, { id: 2, x: 3, y: 1, dir: 'left', inPen: false }, { id: 3, x: 1, y: 3, dir: 'up', inPen: false }], pens: [{ x: 1, y: 0 }, { x: 2, y: 3 }], hay: [{ x: 2, y: 0 }, { x: 0, y: 2 }, { x: 3, y: 2 }], walls: [{ x: 1, y: 2 }] },
-          { id: 6, gridSize: 4, horses: [{ id: 1, x: 0, y: 0, dir: 'right', inPen: false }, { id: 2, x: 3, y: 3, dir: 'up', inPen: false }], pens: [{ x: 0, y: 2 }, { x: 3, y: 1 }], hay: [{ x: 1, y: 1 }, { x: 2, y: 2 }], walls: [{ x: 1, y: 0 }, { x: 2, y: 3 }] },
-          { id: 7, gridSize: 4, horses: [{ id: 1, x: 1, y: 0, dir: 'down', inPen: false }, { id: 2, x: 2, y: 0, dir: 'down', inPen: false }, { id: 3, x: 1, y: 3, dir: 'up', inPen: false }], pens: [{ x: 0, y: 1 }, { x: 3, y: 2 }], hay: [{ x: 0, y: 0 }, { x: 3, y: 0 }, { x: 2, y: 3 }], walls: [{ x: 2, y: 1 }, { x: 1, y: 2 }] },
-          { id: 8, gridSize: 4, horses: [{ id: 1, x: 0, y: 0, dir: 'right', inPen: false }, { id: 2, x: 3, y: 0, dir: 'left', inPen: false }, { id: 3, x: 0, y: 3, dir: 'up', inPen: false }, { id: 4, x: 3, y: 3, dir: 'up', inPen: false }], pens: [{ x: 1, y: 1 }, { x: 2, y: 2 }], hay: [{ x: 1, y: 0 }, { x: 2, y: 0 }, { x: 0, y: 2 }, { x: 3, y: 2 }], walls: [] },
-          { id: 9, gridSize: 5, horses: [{ id: 1, x: 0, y: 0, dir: 'right', inPen: false }, { id: 2, x: 4, y: 0, dir: 'left', inPen: false }, { id: 3, x: 2, y: 2, dir: 'down', inPen: false }], pens: [{ x: 0, y: 4 }, { x: 4, y: 4 }], hay: [{ x: 1, y: 1 }, { x: 3, y: 1 }, { x: 2, y: 3 }], walls: [{ x: 1, y: 3 }, { x: 3, y: 3 }] },
-          { id: 10, gridSize: 5, horses: [{ id: 1, x: 0, y: 0, dir: 'right', inPen: false }, { id: 2, x: 4, y: 0, dir: 'left', inPen: false }, { id: 3, x: 0, y: 4, dir: 'up', inPen: false }, { id: 4, x: 4, y: 4, dir: 'up', inPen: false }], pens: [{ x: 2, y: 2 }], hay: [{ x: 1, y: 2 }, { x: 3, y: 2 }, { x: 2, y: 1 }, { x: 2, y: 3 }], walls: [{ x: 1, y: 1 }, { x: 3, y: 1 }, { x: 1, y: 3 }, { x: 3, y: 3 }] }
-        ];
-        this.maxUnlockedLevel = 10;
-      }
-
-      loadLevel(levelNum) {
-        const level = this.levels.find(l => l.id === levelNum);
-        if (!level) return;
-        this.currentLevel = levelNum;
-        this.levelData = JSON.parse(JSON.stringify(level));
-        this.horses = JSON.parse(JSON.stringify(level.horses));
-        this.pens = level.pens;
-        this.hay = level.hay;
-        this.walls = level.walls || [];
-        this.selectedHorse = null;
-        this.moveCount = 0;
-        this.startTime = Date.now();
-        this.setupCanvas();
-        this.render();
-        this.updateLevelButtons();
-        this.updateStats();
-        if (levelNum === 1 && !localStorage.getItem('gameHelpShown')) {
-          setTimeout(() => showHelp(), 500);
-          localStorage.setItem('gameHelpShown', 'true');
-        }
-      }
-
-      setupCanvas() {
-        // 游戏区域 + 外部的马圈区域
-        const gridSize = this.levelData.gridSize;
-        const pen = this.levelData.pen;
-        const maxGrid = Math.max(gridSize, pen.x + 1, pen.y + 1);
-        const size = maxGrid * this.cellSize + (maxGrid + 1) * 8;
-        this.canvas.width = size + this.padding * 2;
-        this.canvas.height = size + this.padding * 2;
-        this.canvas.style.width = Math.min(size + this.padding * 2, 420) + 'px';
-        this.canvas.style.height = Math.min(size + this.padding * 2, 420) + 'px';
-      }
-
-      setupEvents() {
-        this.canvas.addEventListener('click', (e) => this.handleClick(e));
-        const levelSelect = document.getElementById('levelSelect');
-        levelSelect.innerHTML = '';
-        for (let i = 1; i <= this.levels.length; i++) {
-          const btn = document.createElement('button');
-          btn.className = 'level-btn' + (i === this.currentLevel ? ' active' : '') + (i > this.maxUnlockedLevel ? ' locked' : '');
-          btn.textContent = i;
-          btn.onclick = () => i <= this.maxUnlockedLevel && this.loadLevel(i);
-          levelSelect.appendChild(btn);
-        }
-      }
-
-      updateLevelButtons() {
-        document.querySelectorAll('.level-btn').forEach((btn, idx) => {
-          const level = idx + 1;
-          btn.className = 'level-btn' + (level === this.currentLevel ? ' active' : '') + (level > this.maxUnlockedLevel ? ' locked' : '');
-        });
-      }
-
-      updateStats() {
-        document.getElementById('levelNum').textContent = this.currentLevel;
-        document.getElementById('moveCount').textContent = this.moveCount;
-        const inPen = this.horses.filter(h => h.inPen).length;
-        document.getElementById('targetCount').textContent = inPen + '/' + this.horses.length;
-      }
-
-      handleClick(e) {
-        const rect = this.canvas.getBoundingClientRect();
-        const scaleX = this.canvas.width / rect.width;
-        const scaleY = this.canvas.height / rect.height;
-        const x = (e.clientX - rect.left) * scaleX;
-        const y = (e.clientY - rect.top) * scaleY;
-        const gridX = Math.floor((x - this.padding) / (this.cellSize + 8));
-        const gridY = Math.floor((y - this.padding) / (this.cellSize + 8));
-
-        // 点击了马 - 选中/切换方向
-        playGameSound('select');
-            const clickedHorse = this.horses.find(h => h.x === gridX && h.y === gridY && !h.inPen);
-        if (clickedHorse) {
-          // 点击马：马沿当前方向自动行走一步
-          if (this.canMoveForward(clickedHorse)) {
-            this.moveHorseForward(clickedHorse);
-          } else {
-            // 如果走不了，选择这匹马
-            this.selectedHorse = clickedHorse.id;
-          }
-          this.render();
+    }
+    
+    function moveHorse(horse) {
+      isMoving = true;
+      const dir = DIRECTIONS[horse.direction];
+      const stepTime = 150;
+      
+      function step() {
+        const nextX = horse.gridX + dir.dx;
+        const nextY = horse.gridY + dir.dy;
+        
+        // 检查碰撞
+        const collision = horses.find(h => h !== horse && h.gridX === nextX && h.gridY === nextY);
+        if (collision) {
+          isMoving = false;
           return;
         }
-
-        // 点击了干草 - 吸引马过来（马向草堆方向走）
-        const clickedHay = this.hay.find(h => h.x === gridX && h.y === gridY);
-        if (clickedHay && this.selectedHorse) {
-          const horse = this.horses.find(h => h.id === this.selectedHorse);
-          if (horse) {
-            // 马向草堆方向移动
-            this.moveHorseTowardHay(horse, gridX, gridY);
-          }
-          return;
-        }
-
-        // 点击空地取消选择
-        this.selectedHorse = null;
-        this.render();
-      }
-
-      canMoveForward(horse) {
-        const dir = horse.dir;
-        let newX = horse.x, newY = horse.y;
-        if (dir === 'up') newY--;
-        else if (dir === 'down') newY++;
-        else if (dir === 'left') newX--;
-        else if (dir === 'right') newX++;
-
-        if (newX < 0 || newX >= this.levelData.gridSize || newY < 0 || newY >= this.levelData.gridSize) return false;
-        if (this.walls.some(w => w.x === newX && w.y === newY)) return false;
-        if (this.horses.some(h => h.x === newX && h.y === newY && !h.inPen)) return false;
-        return true;
-      }
-
-      moveHorseForward(horse) {
-        const dir = horse.dir;
-        if (dir === 'up') horse.y--;
-        else if (dir === 'down') horse.y++;
-        else if (dir === 'left') horse.x--;
-        else if (dir === 'right') horse.x++;
         
-        this.moveCount++;
-        this.checkWin();
-        this.updateStats();
-        this.render();
-      }
-
-      // 马向草堆方向移动
-      moveHorseTowardHay(horse, hayX, hayY) {
-        // 计算方向
-        let newX = horse.x;
-        let newY = horse.y;
+        horse.gridX = nextX;
+        horse.gridY = nextY;
+        render();
         
-        if (hayX > horse.x) newX++;
-        else if (hayX < horse.x) newX--;
-        else if (hayY > horse.y) newY++;
-        else if (hayY < horse.y) newY--;
-        
-        // 检查是否可以移动
-        if (newX < 0 || newX >= this.levelData.gridSize || newY < 0 || newY >= this.levelData.gridSize) return;
-        if (this.walls.some(w => w.x === newX && w.y === newY)) return;
-        if (this.horses.some(h => h.x === newX && h.y === newY && !h.inPen)) return;
-        
-        // 移动马
-        horse.x = newX;
-        horse.y = newY;
-        
-        this.moveCount++;
-        this.checkWin();
-        this.updateStats();
-        this.render();
-      }
-
-      checkWin() {
-        this.horses.forEach(horse => {
-          const inPen = this.pens.some(p => p.x === horse.x && p.y === horse.y);
-          horse.inPen = inPen;
-        });
-        if (this.horses.every(h => h.inPen)) {
-          this.showWinModal();
-        }
-      }
-
-      showWinModal() {
-        const time = Math.floor((Date.now() - this.startTime) / 1000);
-        document.getElementById('winStats').textContent = '步数: ' + this.moveCount + ' | 用时: ' + time + '秒';
-        document.getElementById('winModal').classList.add('show');
-      }
-
-      nextLevel() {
-        document.getElementById('winModal').classList.remove('show');
-        if (this.currentLevel < this.levels.length) this.loadLevel(this.currentLevel + 1);
-        else alert('恭喜通关全部关卡！🎉');
-      }
-
-      replayLevel() {
-        document.getElementById('winModal').classList.remove('show');
-        this.loadLevel(this.currentLevel);
-      }
-
-      resetLevel() { this.loadLevel(this.currentLevel); }
-
-      render() {
-        const ctx = this.ctx;
-        const cellSize = this.cellSize;
-        const padding = this.padding;
-        const gridSize = this.levelData.gridSize;
-        
-        ctx.fillStyle = '#E8F5E9';
-        ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-
-        // 棋盘格
-        for (let y = 0; y < gridSize; y++) {
-          for (let x = 0; x < gridSize; x++) {
-            const px = padding + x * (cellSize + 8);
-            const py = padding + y * (cellSize + 8);
-            ctx.fillStyle = (x + y) % 2 === 0 ? '#C8E6C9' : '#A5D6A7';
-            ctx.beginPath();
-            ctx.roundRect(px, py, cellSize, cellSize, 8);
-            ctx.fill();
-          }
-        }
-
-        // 墙壁
-        this.walls.forEach(wall => {
-          const px = padding + wall.x * (cellSize + 8);
-          const py = padding + wall.y * (cellSize + 8);
-          ctx.fillStyle = '#8D6E63';
-          ctx.beginPath();
-          ctx.roundRect(px + 4, py + 4, cellSize - 8, cellSize - 8, 6);
-          ctx.fill();
-        });
-
-        // 马圈
-        this.pens.forEach(pen => {
-          const px = padding + pen.x * (cellSize + 8);
-          const py = padding + pen.y * (cellSize + 8);
-          ctx.fillStyle = 'rgba(141, 110, 99, 0.3)';
-          ctx.beginPath();
-          ctx.roundRect(px + 4, py + 4, cellSize - 8, cellSize - 8, 8);
-          ctx.fill();
-          ctx.strokeStyle = '#8D6E63';
-          ctx.lineWidth = 3;
-          for (let i = 0; i <= 3; i++) {
-            ctx.beginPath();
-            ctx.moveTo(px + 4 + i * (cellSize - 8) / 3, py + 4);
-            ctx.lineTo(px + 4 + i * (cellSize - 8) / 3, py + cellSize - 4);
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.moveTo(px + 4, py + 4 + i * (cellSize - 8) / 3);
-            ctx.lineTo(px + cellSize - 4, py + 4 + i * (cellSize - 8) / 3);
-            ctx.stroke();
-          }
-        });
-
-        // 干草堆
-        this.hay.forEach(h => {
-          const px = padding + h.x * (cellSize + 8);
-          const py = padding + h.y * (cellSize + 8);
-          drawHay(ctx, px, py, cellSize);
-        });
-
-        // 马
-        this.horses.forEach(horse => {
-          const px = padding + horse.x * (cellSize + 8);
-          const py = padding + horse.y * (cellSize + 8);
-          const selected = horse.id === this.selectedHorse;
+        // 检查是否移出边界
+        if (nextX < 0 || nextX >= COLS || nextY < 0 || nextY >= ROWS) {
+          horses = horses.filter(h => h !== horse);
+          isMoving = false;
           
-          if (horse.inPen) {
-            // 在马圈里显示房子
-            ctx.font = '36px Arial';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText('🏠', px + cellSize/2, py + cellSize/2);
-          } else {
-            drawHorse(ctx, px, py, cellSize, horse.dir, selected);
+          if (horses.length === 0) {
+            clearInterval(timerInterval);
+            showVictory();
           }
-        });
+        } else {
+          setTimeout(step, stepTime);
+        }
       }
+      
+      step();
     }
-
-    // 游戏初始化完成后通过事件显示主菜单
-    const game = new Game();
     
-    // 隐藏游戏界面，等待用户点击开始
-    document.querySelector('.game-container').style.display = 'none';
+    function showVictory() {
+      document.getElementById('victoryLevel').textContent = level;
+      document.getElementById('victoryOverlay').classList.add('show');
+    }
     
-    // 页面加载完成后显示主菜单（延迟执行确保showMainMenu已定义）
-    setTimeout(function() {
-      if (typeof showMainMenu === 'function') {
-        showMainMenu();
-      }
-    }, 100);
+    function showFail() {
+      document.getElementById('failLevel').textContent = level;
+      document.getElementById('failOverlay').classList.add('show');
+    }
     
-    function showHelp() { document.getElementById('helpModal').classList.add('show'); }
-    function closeHelp() { document.getElementById('helpModal').classList.remove('show'); }
+    // 事件监听
+    canvas.addEventListener('touchstart', handleTouch);
+    canvas.addEventListener('click', handleTouch);
+    
+    document.getElementById('restartBtn').addEventListener('click', () => {
+      document.getElementById('failOverlay').classList.remove('show');
+      initGame();
+    });
+    
+    document.getElementById('nextBtn').addEventListener('click', () => {
+      level++;
+      document.getElementById('level').textContent = level;
+      initGame();
+    });
+    
+    document.getElementById('nextLevelBtn').addEventListener('click', () => {
+      level++;
+      document.getElementById('level').textContent = level;
+      document.getElementById('victoryOverlay').classList.remove('show');
+      initGame();
+    });
+    
+    document.getElementById('retryBtn').addEventListener('click', () => {
+      document.getElementById('failOverlay').classList.remove('show');
+      initGame();
+    });
+    
+    document.getElementById('shareBtn').addEventListener('click', () => {
+      tt.showShareMenu({
+        title: '🐴 赶马入圈',
+        desc: `我正在玩第${level}关，快来挑战我！`
+      });
+    });
+    
+    // 启动游戏
+    initGame();
   </script>
 </body>
 </html>
-
-<!-- 新手引导系统 -->
-<div id="guideOverlay" class="guide-overlay">
-  <div class="guide-progress">
-    <div class="guide-dot active"></div>
-    <div class="guide-dot"></div>
-    <div class="guide-dot"></div>
-  </div>
-  <div class="guide-content">
-    <div class="guide-title" id="guideTitle">第一步</div>
-    <div class="guide-text" id="guideText">点击选中一匹马</div>
-    <div class="guide-arrow" id="guideArrow">👆</div>
-    <button class="btn btn-primary" onclick="nextGuideStep()" style="margin-top:15px;">下一步</button>
-  </div>
-</div>
-
-<script>
-// 新手引导系统
-let guideStep = 0;
-const guideSteps = [
-  { title: "第一步：选马", text: "点击选中一匹马，马会显示选中框", arrow: "👆" },
-  { title: "第二步：转向", text: "再次点击马匹，可以改变行走方向", arrow: "🔄" },
-  { title: "第三步：驱赶", text: "点击草堆，马会向草堆方向移动。把马赶进圈里就赢了！", arrow: "🏃" }
-];
-
-function startGuide() {
-  if (localStorage.getItem('guideCompleted')) return;
-  guideStep = 0;
-  showGuideStep();
-}
-
-function showGuideStep() {
-  const overlay = document.getElementById('guideOverlay');
-  const title = document.getElementById('guideTitle');
-  const text = document.getElementById('guideText');
-  const arrow = document.getElementById('guideArrow');
-  const dots = document.querySelectorAll('.guide-dot');
-  
-  if (guideStep < guideSteps.length) {
-    title.textContent = guideSteps[guideStep].title;
-    text.textContent = guideSteps[guideStep].text;
-    arrow.textContent = guideSteps[guideStep].arrow;
-    overlay.classList.add('active');
-    dots.forEach((dot, i) => {
-      dot.classList.toggle('active', i <= guideStep);
-    });
-  } else {
-    overlay.classList.remove('active');
-    localStorage.setItem('guideCompleted', 'true');
-  }
-}
-
-function nextGuideStep() {
-  guideStep++;
-  showGuideStep();
-}
-
-// 页面加载时显示新手引导
-window.addEventListener('load', startGuide);
-</script>
-
-<!-- 主菜单界面 -->
-<div id="mainMenu" style="display:none;z-index:9999;position:fixed;">
-  <div class="menu-bg">
-    <div class="menu-logo">🐴 赶马入圈 🐴</div>
-    <div class="menu-subtitle">把马赶进圈里就能赢！</div>
-    <button class="menu-btn menu-btn-primary" onclick="startGame()">🎮 开始游戏</button>
-    <button class="menu-btn menu-btn-secondary" onclick="showHelp()">❓ 游戏说明</button>
-    <div class="menu-stats">
-      <div class="stat-box">
-        <div class="stat-num" id="bestScore">0</div>
-        <div class="stat-label">最高分</div>
-      </div>
-      <div class="stat-box">
-        <div class="stat-num" id="totalGames">0</div>
-        <div class="stat-label">总场次</div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<style>
-.menu-bg {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(180deg, #87CEEB 0%, #98FB98 50%, #228B22 100%);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  z-index: 100;
-}
-.menu-logo {
-  font-size: 42px;
-  font-weight: bold;
-  color: #FF9800;
-  text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-  margin-bottom: 15px;
-  animation: float 2s ease-in-out infinite;
-}
-@keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
-}
-.menu-subtitle {
-  font-size: 16px;
-  color: #333;
-  margin-bottom: 40px;
-}
-.menu-btn {
-  width: 220px;
-  padding: 15px 30px;
-  font-size: 18px;
-  border: none;
-  border-radius: 30px;
-  cursor: pointer;
-  margin: 10px;
-  transition: all 0.3s;
-  font-weight: bold;
-}
-.menu-btn:hover {
-  transform: scale(1.05);
-  box-shadow: 0 8px 25px rgba(0,0,0,0.2);
-}
-.menu-btn-primary {
-  background: linear-gradient(135deg, #FF9800, #FF7043);
-  color: white;
-}
-.menu-btn-secondary {
-  background: rgba(255,255,255,0.9);
-  color: #4CAF50;
-}
-.menu-stats {
-  display: flex;
-  gap: 30px;
-  margin-top: 40px;
-}
-.stat-box {
-  text-align: center;
-  background: rgba(255,255,255,0.8);
-  padding: 15px 25px;
-  border-radius: 15px;
-}
-.stat-num {
-  font-size: 28px;
-  font-weight: bold;
-  color: #FF9800;
-}
-.stat-label {
-  font-size: 12px;
-  color: #666;
-}
-</style>
-
-<script>
-// 主菜单控制
-function showMainMenu() {
-  document.getElementById('mainMenu').style.display = 'block';
-  document.querySelector('.game-container').style.display = 'none';
-  // 读取本地存储的统计数据
-  document.getElementById('bestScore').textContent = localStorage.getItem('bestScore') || 0;
-  document.getElementById('totalGames').textContent = localStorage.getItem('totalGames') || 0;
-}
-
-function startGame() {
-  document.getElementById('mainMenu').style.display = 'none';
-  document.querySelector('.game-container').style.display = 'block';
-  // 增加游戏场次
-  let games = parseInt(localStorage.getItem('totalGames') || 0);
-  localStorage.setItem('totalGames', games + 1);
-}
-
-function showHelp() {
-  alert('游戏说明：\n\n1. 点击选中一匹马\n2. 再次点击改变方向\n3. 点击草堆，马会向草堆移动\n4. 把马赶进圈里就赢了！');
-}
-</script>
-
-<script>
-// 音效系统
-const AudioSys = {
-  ctx: null,
-  init: function() {
-    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-  },
-  playTone: function(freq, duration, type = 'sine') {
-    if (!this.ctx) this.init();
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-    osc.type = type;
-    osc.frequency.value = freq;
-    gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
-    osc.connect(gain);
-    gain.connect(this.ctx.destination);
-    osc.start();
-    osc.stop(this.ctx.currentTime + duration);
-  },
-  playSelect: function() { this.playTone(800, 0.1); },
-  playMove: function() { this.playTone(400, 0.15); },
-  playWin: function() { 
-    this.playTone(523, 0.1);
-    setTimeout(() => this.playTone(659, 0.1), 100);
-    setTimeout(() => this.playTone(784, 0.2), 200);
-  },
-  playError: function() { this.playTone(200, 0.3, 'square'); }
-};
-
-// 游戏事件音效
-function playGameSound(type) {
-  try {
-    switch(type) {
-      case 'select': AudioSys.playSelect(); break;
-      case 'move': AudioSys.playMove(); break;
-      case 'win': AudioSys.playWin(); break;
-      case 'error': AudioSys.playError(); break;
-    }
-  } catch(e) {}
-}
-</script>
-
-<script>
-// 添加动画效果
-function addAnimations() {
-  // 按钮悬停动画
-  document.querySelectorAll('.btn').forEach(btn => {
-    btn.addEventListener('mouseenter', () => {
-      btn.style.transform = 'scale(1.05) translateY(-2px)';
-    });
-    btn.addEventListener('mouseleave', () => {
-      btn.style.transform = 'scale(1) translateY(0)';
-    });
-  });
-  
-  // 关卡按钮动画
-  document.querySelectorAll('.level-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      btn.style.animation = 'none';
-      btn.offsetHeight; // trigger reflow
-      btn.style.animation = 'pop 0.3s ease';
-    });
-  });
-}
-
-// 添加CSS动画
-const style = document.createElement('style');
-style.textContent = `
-  @keyframes pop {
-    0% { transform: scale(1); }
-    50% { transform: scale(0.9); }
-    100% { transform: scale(1); }
-  }
-  .pulse {
-    animation: pulse 0.5s ease;
-  }
-  @keyframes pulse {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.1); }
-    100% { transform: scale(1); }
-  }
-`;
-document.head.appendChild(style);
-
-// 页面加载后启用动画
-window.addEventListener('load', addAnimations);
-</script>
-
-<!-- 游戏内HUD -->
-<div id="gameHUD" style="display:none;">
-  <div class="hud-bar">
-    <div class="hud-item">
-      <span class="hud-icon">⏱️</span>
-      <span class="hud-value" id="hudTime">00:00</span>
-    </div>
-    <div class="hud-item">
-      <span class="hud-icon">⭐</span>
-      <span class="hud-value" id="hudScore">0</span>
-    </div>
-    <div class="hud-item">
-      <span class="hud-icon">🏆</span>
-      <span class="hud-value" id="hudLevel">第1关</span>
-    </div>
-    <div class="hud-item hud-pause" onclick="togglePause()">
-      <span class="hud-icon">⏸️</span>
-    </div>
-  </div>
-</div>
-
-<!-- 结算界面 -->
-<div id="resultPanel" style="display:none;">
-  <div class="result-overlay">
-    <div class="result-box">
-      <div class="result-title" id="resultTitle">🎉 恭喜过关！</div>
-      <div class="result-stars" id="resultStars">⭐⭐⭐</div>
-      <div class="result-stats">
-        <div class="result-stat">
-          <div class="result-num" id="resultScore">100</div>
-          <div class="result-label">得分</div>
-        </div>
-        <div class="result-stat">
-          <div class="result-num" id="resultTime">00:45</div>
-          <div class="result-label">用时</div>
-        </div>
-        <div class="result-stat">
-          <div class="result-num" id="resultMoves">15</div>
-          <div class="result-label">步数</div>
-        </div>
-      </div>
-      <div class="result-btns">
-        <button class="result-btn result-btn-primary" onclick="nextLevel()">下一关 →</button>
-        <button class="result-btn result-btn-secondary" onclick="restartLevel()">🔄 重来</button>
-        <button class="result-btn result-btn-third" onclick="backToMenu()">🏠 菜单</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<style>
-.hud-bar {
-  position: fixed;
-  top: 10px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  gap: 15px;
-  background: rgba(255,255,255,0.95);
-  padding: 10px 20px;
-  border-radius: 25px;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-  z-index: 50;
-}
-.hud-item {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-.hud-icon { font-size: 18px; }
-.hud-value { font-size: 16px; font-weight: bold; color: #333; }
-.hud-pause { cursor: pointer; padding: 5px 10px; }
-
-.result-overlay {
-  position: fixed;
-  top: 0; left: 0;
-  width: 100%; height: 100%;
-  background: rgba(0,0,0,0.7);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 200;
-}
-.result-box {
-  background: white;
-  padding: 30px;
-  border-radius: 25px;
-  text-align: center;
-  min-width: 300px;
-  animation: slideUp 0.5s ease;
-}
-@keyframes slideUp {
-  from { transform: translateY(50px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
-}
-.result-title { font-size: 28px; font-weight: bold; color: #FF9800; margin-bottom: 15px; }
-.result-stars { font-size: 40px; margin-bottom: 20px; }
-.result-stats { display: flex; justify-content: space-around; margin-bottom: 25px; }
-.result-stat { text-align: center; }
-.result-num { font-size: 24px; font-weight: bold; color: #4CAF50; }
-.result-label { font-size: 12px; color: #999; }
-.result-btns { display: flex; flex-direction: column; gap: 10px; }
-.result-btn {
-  padding: 12px 25px;
-  font-size: 16px;
-  border: none;
-  border-radius: 20px;
-  cursor: pointer;
-  font-weight: bold;
-}
-.result-btn-primary { background: linear-gradient(135deg, #FF9800, #FF7043); color: white; }
-.result-btn-secondary { background: #4CAF50; color: white; }
-.result-btn-third { background: #2196F3; color: white; }
-</style>
-
-<script>
-// HUD更新
-function updateHUD(time, score, level) {
-  document.getElementById('hudTime').textContent = time;
-  document.getElementById('hudScore').textContent = score;
-  document.getElementById('hudLevel').textContent = '第' + level + '关';
-}
-
-// 显示结算界面
-function showResult(score, time, moves, stars, passed) {
-  const panel = document.getElementById('resultPanel');
-  document.getElementById('resultTitle').textContent = passed ? '🎉 恭喜过关！' : '😢 再试一次！';
-  document.getElementById('resultStars').textContent = '⭐'.repeat(stars) + '☆'.repeat(3-stars);
-  document.getElementById('resultScore').textContent = score;
-  document.getElementById('resultTime').textContent = time;
-  document.getElementById('resultMoves').textContent = moves;
-  panel.style.display = 'flex';
-  
-  // 记录最高分
-  const best = localStorage.getItem('bestScore') || 0;
-  if (score > best) {
-    localStorage.setItem('bestScore', score);
-  }
-}
-
-function nextLevel() {
-  document.getElementById('resultPanel').style.display = 'none';
-  // 下一关逻辑
-}
-function restartLevel() {
-  document.getElementById('resultPanel').style.display = 'none';
-  location.reload();
-}
-function backToMenu() {
-  document.getElementById('resultPanel').style.display = 'none';
-  showMainMenu();
-}
-function togglePause() {
-  alert('暂停功能开发中...');
-}
-</script>
-
-<script>
-// 扩展关卡数据 - pen在地图外面
-const extendedLevels = [
-  // 基础关卡 1-5 (gridSize是游戏区域，pen在外面)
-  { id: 1, name: "草地", gridSize: 4, horses: 1, hay: 1, pen: {x:5,y:2}, obstacles: [], difficulty: 1 },
-  { id: 2, name: "石路", gridSize: 4, horses: 1, hay: 1, pen: {x:5,y:2}, obstacles: [{x:2,y:2}], difficulty: 1 },
-  { id: 3, name: "丛林", gridSize: 5, horses: 2, hay: 1, pen: {x:6,y:3}, obstacles: [{x:2,y:2},{x:3,y:3}], difficulty: 2 },
-  { id: 4, name: "沼泽", gridSize: 5, horses: 2, hay: 2, pen: {x:6,y:3}, obstacles: [{x:1,y:1},{x:4,y:2}], difficulty: 2 },
-  { id: 5, name: "山峰", gridSize: 6, horses: 2, hay: 2, pen: {x:7,y:3}, obstacles: [{x:2,y:2},{x:3,y:4},{x:4,y:3}], difficulty: 2 },
-  // 进阶关卡 6-10
-  { id: 6, name: "河流", gridSize: 6, horses: 3, hay: 2, pen: {x:7,y:0}, obstacles: [{x:3,y:3},{x:2,y:5},{x:5,y:2}], difficulty: 3 },
-  { id: 7, name: "沙漠", gridSize: 7, horses: 3, hay: 2, pen: {x:8,y:4}, obstacles: [{x:1,y:1},{x:3,y:3},{x:5,y:5},{x:2,y:6}], difficulty: 3 },
-  { id: 8, name: "峡谷", gridSize: 7, horses: 3, hay: 3, pen: {x:0,y:4}, obstacles: [{x:2,y:2},{x:4,y:4},{x:6,y:6},{x:3,y:5}], difficulty: 3 },
-  { id: 9, name: "森林", gridSize: 8, horses: 4, hay: 3, pen: {x:9,y:4}, obstacles: [{x:1,y:2},{x:3,y:1},{x:5,y:5},{x:7,y:3},{x:2,y:7}], difficulty: 4 },
-  { id: 10, name: "迷宫", gridSize: 8, horses: 4, hay: 3, pen: {x:4,y:9}, obstacles: [{x:2,y:2},{x:2,y:3},{x:2,y:4},{x:6,y:4},{x:6,y:5},{x:6,y:6}], difficulty: 4 },
-];
-
-// 难度评分系统
-function calculateStars(time, moves, difficulty) {
-  const baseScore = 100 * difficulty;
-  const timeBonus = Math.max(0, 50 - time);
-  const moveBonus = Math.max(0, 30 - moves * 2);
-  const total = baseScore + timeBonus + moveBonus;
-  
-  if (total >= 130) return 3;
-  if (total >= 80) return 2;
-  return 1;
-}
-
-// 关卡解锁系统
-function unlockNextLevel(currentLevel) {
-  const unlocked = parseInt(localStorage.getItem('unlockedLevel') || 1);
-  if (currentLevel >= unlocked && currentLevel < extendedLevels.length) {
-    localStorage.setItem('unlockedLevel', currentLevel + 1);
-  }
-}
-
-// 获取已解锁关卡
-function getUnlockedLevel() {
-  return parseInt(localStorage.getItem('unlockedLevel') || 1);
-}
-</script>
-
-<script>
-// 视觉特效系统
-const VFX = {
-  // 入圈成功特效
-  showPenEffect: function(x, y) {
-    const effect = document.createElement('div');
-    effect.style.cssText = `
-      position: fixed;
-      left: ${x}px;
-      top: ${y}px;
-      width: 50px;
-      height: 50px;
-      background: radial-gradient(circle, gold, transparent);
-      border-radius: 50%;
-      animation: vfx-pen 0.5s ease-out forwards;
-      pointer-events: none;
-      z-index: 100;
-    `;
-    document.body.appendChild(effect);
-    setTimeout(() => effect.remove(), 500);
-  },
-  
-  // 粒子效果
-  showParticles: function(x, y, color = '#FFD700') {
-    for (let i = 0; i < 8; i++) {
-      const p = document.createElement('div');
-      const angle = (i / 8) * Math.PI * 2;
-      const dist = 30 + Math.random() * 20;
-      p.style.cssText = `
-        position: fixed;
-        left: ${x}px;
-        top: ${y}px;
-        width: 8px;
-        height: 8px;
-        background: ${color};
-        border-radius: 50%;
-        pointer-events: none;
-        z-index: 100;
-      `;
-      document.body.appendChild(p);
-      p.animate([
-        { transform: 'translate(0,0) scale(1)', opacity: 1 },
-        { transform: `translate(${Math.cos(angle)*dist}px, ${Math.sin(angle)*dist}px) scale(0)`, opacity: 0 }
-      ], { duration: 400, easing: 'ease-out' });
-      setTimeout(() => p.remove(), 400);
-    }
-  },
-  
-  // 屏幕震动
-  shake: function() {
-    document.body.animate([
-      { transform: 'translate(0)' },
-      { transform: 'translate(-5px, 5px)' },
-      { transform: 'translate(5px, -5px)' },
-      { transform: 'translate(-5px, 5px)' },
-      { transform: 'translate(0)' }
-    ], { duration: 200 });
-  }
-};
-
-// 添加CSS动画
-const vfxStyle = document.createElement('style');
-vfxStyle.textContent = `
-  @keyframes vfx-pen {
-    0% { transform: scale(0); opacity: 1; }
-    50% { transform: scale(1.5); opacity: 0.8; }
-    100% { transform: scale(2); opacity: 0; }
-  }
-`;
-document.head.appendChild(vfxStyle);
-</script>
-
-<!-- 暂停界面 -->
-<div id="pausePanel" style="display:none;">
-  <div class="pause-overlay">
-    <div class="pause-box">
-      <div class="pause-title">⏸️ 游戏暂停</div>
-      <button class="pause-btn" onclick="resumeGame()">▶️ 继续</button>
-      <button class="pause-btn" onclick="restartLevel()">🔄 重来</button>
-      <button class="pause-btn" onclick="backToMenu()">🏠 菜单</button>
-    </div>
-  </div>
-</div>
-
-<!-- 设置面板 -->
-<div id="settingsPanel" style="display:none;">
-  <div class="settings-overlay">
-    <div class="settings-box">
-      <div class="settings-title">⚙️ 设置</div>
-      <div class="setting-item">
-        <span>🔊 音效</span>
-        <label class="switch">
-          <input type="checkbox" id="soundToggle" checked onchange="toggleSound(this.checked)">
-          <span class="slider"></span>
-        </label>
-      </div>
-      <div class="setting-item">
-        <span>🎵 音乐</span>
-        <label class="switch">
-          <input type="checkbox" id="musicToggle" checked onchange="toggleMusic(this.checked)">
-          <span class="slider"></span>
-        </label>
-      </div>
-      <button class="pause-btn" onclick="closeSettings()">关闭</button>
-    </div>
-  </div>
-</div>
-
-<style>
-.pause-overlay, .settings-overlay {
-  position: fixed;
-  top: 0; left: 0;
-  width: 100%; height: 100%;
-  background: rgba(0,0,0,0.8);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 300;
-}
-.pause-box, .settings-box {
-  background: white;
-  padding: 30px;
-  border-radius: 20px;
-  text-align: center;
-}
-.pause-title, .settings-title {
-  font-size: 24px;
-  font-weight: bold;
-  margin-bottom: 20px;
-  color: #333;
-}
-.pause-btn {
-  display: block;
-  width: 200px;
-  padding: 12px;
-  margin: 10px auto;
-  font-size: 16px;
-  border: none;
-  border-radius: 20px;
-  background: #4CAF50;
-  color: white;
-  cursor: pointer;
-}
-.setting-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 15px;
-  border-bottom: 1px solid #eee;
-}
-.switch {
-  position: relative;
-  width: 50px;
-  height: 26px;
-}
-.switch input { opacity: 0; width: 0; height: 0; }
-.slider {
-  position: absolute;
-  cursor: pointer;
-  top: 0; left: 0;
-  right: 0; bottom: 0;
-  background: #ccc;
-  border-radius: 26px;
-  transition: .4s;
-}
-.slider:before {
-  position: absolute;
-  content: "";
-  height: 20px;
-  width: 20px;
-  left: 3px;
-  bottom: 3px;
-  background: white;
-  border-radius: 50%;
-  transition: .4s;
-}
-input:checked + .slider { background: #4CAF50; }
-input:checked + .slider:before { transform: translateX(24px); }
-</style>
-
-<script>
-let isPaused = false;
-let soundEnabled = true;
-let musicEnabled = true;
-
-function togglePause() {
-  isPaused = !isPaused;
-  document.getElementById('pausePanel').style.display = isPaused ? 'flex' : 'none';
-}
-function resumeGame() {
-  isPaused = false;
-  document.getElementById('pausePanel').style.display = 'none';
-}
-function openSettings() {
-  document.getElementById('settingsPanel').style.display = 'flex';
-}
-function closeSettings() {
-  document.getElementById('settingsPanel').style.display = 'none';
-}
-function toggleSound(enabled) {
-  soundEnabled = enabled;
-  localStorage.setItem('soundEnabled', enabled);
-}
-function toggleMusic(enabled) {
-  musicEnabled = enabled;
-  localStorage.setItem('musicEnabled', enabled);
-}
-// 加载设置
-soundEnabled = localStorage.getItem('soundEnabled') !== 'false';
-musicEnabled = localStorage.getItem('musicEnabled') !== 'false';
-
-// 页面加载完成后显示主菜单
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', showMainMenu);
-} else {
-  showMainMenu();
-}
-</script>
