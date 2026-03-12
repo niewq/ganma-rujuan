@@ -142,48 +142,36 @@ function render() {
     // 绘制时间
     ctx.fillStyle = timeLeft <= 15 ? '#FF5722' : '#FFF';
     ctx.font = 'bold 24px Arial';
-    ctx.fillText(String.fromCharCode(0x23F1) + ' ' + timeLeft + String.fromCharCode(0x79D2), 20, 35);
+    ctx.fillText('Time: ' + timeLeft, 20, 35);
 }
 
 // 处理点击
 function handleTouch(e) {
     if (isMoving || !canvas) return;
     
-    var rect = null;
+    var touchInfo = e;
+    
+    // 获取触摸坐标
     var clientX = 0;
     var clientY = 0;
     
-    if (e.touches && e.touches.length > 0) {
-        clientX = e.touches[0].clientX;
-        clientY = e.touches[0].clientY;
-    } else if (e.changedTouches && e.changedTouches.length > 0) {
-        clientX = e.changedTouches[0].clientX;
-        clientY = e.changedTouches[0].clientY;
-    } else if (e.clientX) {
-        clientX = e.clientX;
-        clientY = e.clientY;
+    if (touchInfo.touches && touchInfo.touches.length > 0) {
+        clientX = touchInfo.touches[0].clientX;
+        clientY = touchInfo.touches[0].clientY;
+    } else if (touchInfo.changedTouches && touchInfo.changedTouches.length > 0) {
+        clientX = touchInfo.changedTouches[0].clientX;
+        clientY = touchInfo.changedTouches[0].clientY;
+    } else if (touchInfo.clientX) {
+        clientX = touchInfo.clientX;
+        clientY = touchInfo.clientY;
     } else {
         return;
     }
     
-    // 尝试获取canvas位置
-    try {
-        rect = canvas.getBoundingClientRect();
-    } catch (e) {
-        rect = { left: 0, top: 0, width: GAME_WIDTH, height: GAME_HEIGHT };
-    }
-    
-    if (!rect) {
-        rect = { left: 0, top: 0, width: GAME_WIDTH, height: GAME_HEIGHT };
-    }
-    
-    var x = clientX - rect.left;
-    var y = clientY - rect.top;
-
-    var scaleX = GAME_WIDTH / rect.width;
-    var scaleY = GAME_HEIGHT / rect.height;
-    var canvasX = x * scaleX;
-    var canvasY = y * scaleY;
+    // 计算点击位置（简化版，假设canvas占满屏幕）
+    var scale = GAME_WIDTH / 375; // 假设标准宽度375
+    var canvasX = clientX * scale;
+    var canvasY = clientY * scale;
 
     var gridX = Math.floor(canvasX / CELL_WIDTH);
     var gridY = Math.floor(canvasY / CELL_HEIGHT);
@@ -254,154 +242,61 @@ function moveHorse(horse) {
 }
 
 function showVictory() {
-    var victoryLevel = document.getElementById('victoryLevel');
-    if (victoryLevel) {
-        victoryLevel.innerText = level.toString();
-    }
-    var overlay = document.getElementById('victoryOverlay');
-    if (overlay) {
-        overlay.style.display = 'flex';
-        overlay.style.opacity = '1';
-        overlay.style.pointerEvents = 'auto';
-    }
+    tt.showModal({
+        title: 'Victory',
+        content: 'Level ' + level + ' Complete!',
+        showCancel: false,
+        success: function() {
+            level = level + 1;
+            initGame();
+        }
+    });
 }
 
 function showFail() {
-    var failLevel = document.getElementById('failLevel');
-    if (failLevel) {
-        failLevel.innerText = level.toString();
-    }
-    var overlay = document.getElementById('failOverlay');
-    if (overlay) {
-        overlay.style.display = 'flex';
-        overlay.style.opacity = '1';
-        overlay.style.pointerEvents = 'auto';
-    }
-}
-
-// 隐藏弹窗
-function hideVictoryOverlay() {
-    var overlay = document.getElementById('victoryOverlay');
-    if (overlay) {
-        overlay.style.opacity = '0';
-        overlay.style.pointerEvents = 'none';
-    }
-}
-
-function hideFailOverlay() {
-    var overlay = document.getElementById('failOverlay');
-    if (overlay) {
-        overlay.style.opacity = '0';
-        overlay.style.pointerEvents = 'none';
-    }
+    tt.showModal({
+        title: 'Time Up',
+        content: 'Level ' + level + ' Failed!',
+        showCancel: false,
+        success: function() {
+            level = 1;
+            initGame();
+        }
+    });
 }
 
 // 绑定按钮事件
 function bindButtons() {
-    var restartBtn = document.getElementById('restartBtn');
-    if (restartBtn) {
-        restartBtn.onclick = function() {
-            hideFailOverlay();
-            level = 1;
-            var levelSpan = document.getElementById('level');
-            if (levelSpan) {
-                levelSpan.innerText = '1';
-            }
-            initGame();
-        };
-    }
-
-    var nextBtn = document.getElementById('nextBtn');
-    if (nextBtn) {
-        nextBtn.onclick = function() {
-            level = level + 1;
-            var levelSpan = document.getElementById('level');
-            if (levelSpan) {
-                levelSpan.innerText = level.toString();
-            }
-            initGame();
-        };
-    }
-
-    var nextLevelBtn = document.getElementById('nextLevelBtn');
-    if (nextLevelBtn) {
-        nextLevelBtn.onclick = function() {
-            level = level + 1;
-            var levelSpan = document.getElementById('level');
-            if (levelSpan) {
-                levelSpan.innerText = level.toString();
-            }
-            hideVictoryOverlay();
-            initGame();
-        };
-    }
-
-    var retryBtn = document.getElementById('retryBtn');
-    if (retryBtn) {
-        retryBtn.onclick = function() {
-            hideFailOverlay();
-            initGame();
-        };
-    }
-
-    var shareBtn = document.getElementById('shareBtn');
-    if (shareBtn) {
-        shareBtn.onclick = function() {
-            if (typeof tt !== 'undefined' && tt.showShareMenu) {
-                tt.showShareMenu({
-                    title: String.fromCharCode(0xD83D, 0xDC34) + ' ' + String.fromCharCode(0x8D74, 0x9A6C, 0x5165, 0x5708),
-                    desc: String.fromCharCode(0x6211) + String.fromCharCode(0x6B63) + String.fromCharCode(0x5728) + String.fromCharCode(0x7B2C) + level + String.fromCharCode(0x5173) + String.fromCharCode(0xFF0C) + String.fromCharCode(0x5FEB) + String.fromCharCode(0x6765) + String.fromCharCode(0x6311) + String.fromCharCode(0x6218) + String.fromCharCode(0x6211) + String.fromCharCode(0xFF01)
-                });
-            }
-        };
-    }
+    if (typeof tt === 'undefined') return;
+    
+    // 下一关按钮
+    tt.onNextLevelBtnTap = function() {
+        level = level + 1;
+        initGame();
+    };
+    
+    // 重试按钮
+    tt.onRestartBtnTap = function() {
+        level = 1;
+        initGame();
+    };
 }
 
 // 初始化 - 适配抖音小游戏环境
 function init() {
-    // 尝试获取DOM中的canvas
-    var gameCanvas = document.getElementById('gameCanvas');
-    
-    if (gameCanvas) {
-        // 使用DOM中的canvas
-        canvas = gameCanvas;
-    } else if (typeof tt !== 'undefined' && tt.createCanvas) {
-        // 抖音小游戏环境，创建canvas
-        canvas = tt.createCanvas();
-    } else {
-        // 浏览器环境
-        canvas = document.createElement('canvas');
-        document.body.appendChild(canvas);
-    }
-    
-    if (!canvas) {
-        setTimeout(init, 100);
-        return;
-    }
-    
-    ctx = canvas.getContext('2d');
-    
-    // 设置canvas尺寸
+    // 创建canvas
+    canvas = tt.createCanvas();
     canvas.width = GAME_WIDTH;
     canvas.height = GAME_HEIGHT;
     
-    // 尝试将canvas添加到页面
-    if (!document.getElementById('gameCanvas') && canvas.parentNode === null) {
-        var container = document.querySelector('.game-container');
-        if (container) {
-            container.appendChild(canvas);
-        }
-    }
-
+    ctx = canvas.getContext('2d');
+    
     // 绑定事件
     canvas.addEventListener('touchstart', handleTouch, false);
-    canvas.addEventListener('click', handleTouch, false);
-    
-    bindButtons();
     
     // 启动游戏
     initGame();
 }
 
 // 启动
-setTimeout(init, 500);
+init();
